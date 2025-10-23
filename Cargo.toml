@@ -1,7 +1,8 @@
 [package]
-name = "spanner"
+name = "tracing-spanner"
 description = "Span introspection library for `tracing`."
-version = "0.1.0"
+repository = "https://github.com/tascord/spanner"
+version = "0.0.1"
 edition = "2024"
 license = "MIT"
 
