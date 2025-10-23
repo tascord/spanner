@@ -1,14 +1,17 @@
-use std::{
-    collections::HashMap,
-    sync::Arc,
-    time::{SystemTime, UNIX_EPOCH},
+use {
+    crate::{event_data::EventData, span::SpanInfo},
+    serde::{Deserialize, Serialize},
+    std::{
+        collections::HashMap,
+        sync::Arc,
+        time::{SystemTime, UNIX_EPOCH},
+    },
+    tracing::Level,
 };
-use tracing::Level;
 
-use crate::{event_data::EventData, span::SpanInfo};
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Event {
+    #[serde(skip)]
     pub parent: Option<Arc<Event>>,
     pub event_data: EventData,
     pub span_stack: Vec<SpanInfo>,
@@ -66,31 +69,24 @@ impl Event {
         self
     }
 
-    pub fn add_metadata(&mut self, key: String, value: String) {
-        self.custom_metadata.insert(key, value);
-    }
+    pub fn add_metadata(&mut self, key: String, value: String) { self.custom_metadata.insert(key, value); }
 
     /// Get the full span hierarchy as a formatted tree string
     pub fn get_span_tree(&self) -> String {
         let mut tree = String::new();
 
         if let Some(ref current) = self.current_span {
-            tree.push_str(&format!("Current Span: {} ({})\n", current.name, current.level));
+            tree.push_str(&format!("Current Span: {} ({})\n", current.name, current.level()));
         }
 
         if !self.span_stack.is_empty() {
             tree.push_str("Span Stack:\n");
             for (depth, span) in self.span_stack.iter().enumerate() {
                 let indent = "  ".repeat(depth);
-                let duration_str = span
-                    .get_duration()
-                    .map(|d| format!(" [{:.2?}]", d))
-                    .unwrap_or_else(|| " [active]".to_string());
+                let duration_str =
+                    span.get_duration().map(|d| format!(" [{:.2?}]", d)).unwrap_or_else(|| " [active]".to_string());
 
-                tree.push_str(&format!(
-                    "{}├─ {} ({}){}", 
-                    indent, span.name, span.level, duration_str
-                ));
+                tree.push_str(&format!("{}├─ {} ({}){}", indent, span.name, span.level(), duration_str));
 
                 if !span.fields.is_empty() {
                     tree.push_str(" {");
@@ -113,15 +109,9 @@ impl Event {
 
     fn format_span_child(span: &SpanInfo, depth: usize, tree: &mut String) {
         let indent = "  ".repeat(depth);
-        let duration_str = span
-            .get_duration()
-            .map(|d| format!(" [{:.2?}]", d))
-            .unwrap_or_else(|| " [active]".to_string());
+        let duration_str = span.get_duration().map(|d| format!(" [{:.2?}]", d)).unwrap_or_else(|| " [active]".to_string());
 
-        tree.push_str(&format!(
-            "{}├─ {} ({}){}", 
-            indent, span.name, span.level, duration_str
-        ));
+        tree.push_str(&format!("{}├─ {} ({}){}", indent, span.name, span.level(), duration_str));
 
         if !span.fields.is_empty() {
             tree.push_str(" {");
@@ -141,18 +131,12 @@ impl Event {
     pub fn get_full_context(&self) -> String {
         let mut context = String::new();
 
-        context.push_str(&format!(
-            "Event: {} ({})\n", 
-            self.event_data.message, self.event_data.level
-        ));
+        context.push_str(&format!("Event: {} ({})\n", self.event_data.message, self.event_data.level()));
         context.push_str(&format!("Target: {}\n", self.event_data.target));
         context.push_str(&format!("Timestamp: {:?}\n", self.event_data.timestamp));
 
         if let Some(ref file) = self.event_data.file {
-            context.push_str(&format!(
-                "Location: {}:{}\n", 
-                file, self.event_data.line.unwrap_or(0)
-            ));
+            context.push_str(&format!("Location: {}:{}\n", file, self.event_data.line.unwrap_or(0)));
         }
 
         if let Some(ref thread_id) = self.thread_id {
@@ -205,7 +189,7 @@ impl Event {
         span_name_contains: Option<&str>,
     ) -> bool {
         if let Some(level) = level_filter
-            && self.event_data.level != level
+            && self.event_data.level() != level
         {
             return false;
         }
@@ -223,11 +207,8 @@ impl Event {
         }
 
         if let Some(span_name) = span_name_contains {
-            let has_matching_span = self
-                .span_stack
-                .iter()
-                .chain(self.current_span.iter())
-                .any(|span| span.name.contains(span_name));
+            let has_matching_span =
+                self.span_stack.iter().chain(self.current_span.iter()).any(|span| span.name.contains(span_name));
             if !has_matching_span {
                 return false;
             }
@@ -264,10 +245,8 @@ impl Event {
         let mut event = Event::from_tracing_event(message, level, target, None, HashMap::new());
 
         // Add thread information
-        event = event.with_thread_info(
-            format!("{:?}", std::thread::current().id()),
-            std::thread::current().name().map(String::from),
-        );
+        event = event
+            .with_thread_info(format!("{:?}", std::thread::current().id()), std::thread::current().name().map(String::from));
 
         // Add process ID
         event = event.with_process_id(std::process::id());

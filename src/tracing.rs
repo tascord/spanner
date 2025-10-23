@@ -1,25 +1,24 @@
-use std::collections::HashMap;
-use tracing::Subscriber;
-use tracing_subscriber::{layer::Context, Layer};
-
-use crate::{
-    event::Event,
-    event_data::EventData,
-    manager::{add_global_event, init_global_event_manager},
+use {
+    crate::{
+        event::Event,
+        event_data::EventData,
+        manager::{emit, init_global_event_manager},
+    },
+    std::collections::HashMap,
+    tracing::Subscriber,
+    tracing_subscriber::{Layer, layer::Context},
 };
 
 /// Initialize the complete tracing system with event capture
 /// This sets up both the global event manager and the tracing subscriber
 pub fn init_tracing_capture() -> Result<(), Box<dyn std::error::Error>> {
-    use tracing_subscriber::{prelude::*, Registry};
+    use tracing_subscriber::{Registry, prelude::*};
 
     // Initialize global event manager
     init_global_event_manager();
 
     // Set up tracing subscriber with our custom layer
-    let subscriber = Registry::default()
-        .with(SpannerLayer)
-        .with(tracing_subscriber::fmt::layer()); // Also include formatted output
+    let subscriber = Registry::default().with(SpannerLayer).with(tracing_subscriber::fmt::layer()); // Also include formatted output
 
     tracing::subscriber::set_global_default(subscriber)?;
 
@@ -56,17 +55,13 @@ where
             }
         }
 
-        let mut visitor = FieldVisitor {
-            fields: &mut fields,
-            message: &mut message,
-        };
+        let mut visitor = FieldVisitor { fields: &mut fields, message: &mut message };
 
         event.record(&mut visitor);
 
         // Create event data
         let metadata = event.metadata();
-        let mut event_data =
-            EventData::new(message, *metadata.level(), metadata.target().to_string());
+        let mut event_data = EventData::new(message, *metadata.level(), metadata.target().to_string());
 
         event_data.fields = fields;
         event_data.file = metadata.file().map(String::from);
@@ -75,23 +70,14 @@ where
 
         // Create the event with thread context
         let captured_event = Event::new(event_data)
-            .with_thread_info(
-                format!("{:?}", std::thread::current().id()),
-                std::thread::current().name().map(String::from),
-            )
+            .with_thread_info(format!("{:?}", std::thread::current().id()), std::thread::current().name().map(String::from))
             .with_process_id(std::process::id())
             .with_correlation_id(format!("corr-{}", generate_uuid_like_string()));
 
-        // Add to global event manager
-        add_global_event(captured_event);
+        emit(captured_event);
     }
 
-    fn on_new_span(
-        &self,
-        _attrs: &tracing::span::Attributes<'_>,
-        _id: &tracing::span::Id,
-        _ctx: Context<'_, S>,
-    ) {
+    fn on_new_span(&self, _attrs: &tracing::span::Attributes<'_>, _id: &tracing::span::Id, _ctx: Context<'_, S>) {
         // Could implement span tracking here for even richer context
     }
 

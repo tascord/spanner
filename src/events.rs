@@ -1,5 +1,3 @@
-use uuid::Uuid;
-
 use {
     futures::Stream,
     std::{
@@ -15,6 +13,7 @@ use {
         mpsc::{self, UnboundedReceiver, unbounded_channel},
     },
     tracing::instrument,
+    uuid::Uuid,
 };
 
 // Re-export from other modules for convenience
@@ -147,9 +146,7 @@ impl<T: Debug> Deref for EventStream<T> {
 impl<T: Debug> Stream for EventStream<T> {
     type Item = Arc<T>;
 
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> { 
-        self.ch.poll_recv(cx) 
-    }
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> { self.ch.poll_recv(cx) }
 }
 
 /// Bridge between the async event system and the tracing event system
@@ -158,16 +155,10 @@ pub struct TracingEventBridge {
 }
 
 impl TracingEventBridge {
-    pub fn new() -> Self {
-        Self {
-            target: EventTarget::new(),
-        }
-    }
+    pub fn new() -> Self { Self { target: EventTarget::new() } }
 
     /// Emit a tracing Event through the async event system
-    pub fn emit_tracing_event(&self, event: Event) {
-        self.target.emit(event);
-    }
+    pub fn emit_tracing_event(&self, event: Event) { self.target.emit(event); }
 
     /// Subscribe to tracing events through the async event system
     pub fn on_tracing_event(&self, handler: impl Fn(Arc<Event>) + Send + Sync + 'static) -> Arc<Subscription<Event>> {
@@ -175,13 +166,9 @@ impl TracingEventBridge {
     }
 
     /// Get a stream of tracing events
-    pub fn as_stream(&self) -> EventStream<Event> {
-        self.target.as_stream()
-    }
+    pub fn as_stream(&self) -> EventStream<Event> { self.target.as_stream() }
 }
 
 impl Default for TracingEventBridge {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
