@@ -1,0 +1,27 @@
+[package]
+name = "spanner"
+description = "Span introspection library for `tracing`."
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+
+[dependencies]
+futures = "0.3.31"
+rustsx = "0.1.1"
+tokio = { version = "1.45.1", default-features = false, features = ["sync"] }
+uuid = { version = "1.18.1", features = ["v4"] }
+wasm-bindgen = "0.2.104"
+tracing = { version = "0.1.41", default-features = false, features = [
+    "std",
+    "log",
+    "attributes",
+] }
+tracing-subscriber = { version = "0.3.18", default-features = false, features = [
+    "std",
+    "env-filter",
+    "ansi",
+    "registry",
+    "tracing-log",
+    "smallvec",
+    "parking_lot",
+] }
