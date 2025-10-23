@@ -119,7 +119,7 @@ where
 
 /// Helper function to generate a simple UUID-like string
 fn generate_uuid_like_string() -> String {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
-    format!("{:x}-{:x}", now.as_secs(), now.subsec_nanos())
+    use chrono::Utc;
+    let now = Utc::now();
+    format!("{:x}-{:x}", now.timestamp(), now.timestamp_subsec_nanos())
 }

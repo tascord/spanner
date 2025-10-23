@@ -1,5 +1,6 @@
 use {
     crate::{event::Event, events::EventTarget},
+    chrono::{DateTime, Utc},
     serde::{Deserialize, Serialize},
     std::{
         collections::{BTreeMap, VecDeque},
@@ -8,7 +9,6 @@ use {
         ops::Deref,
         path::Path,
         sync::{Arc, OnceLock, RwLock},
-        time::SystemTime,
     },
     tracing::Level,
 };
@@ -127,7 +127,7 @@ pub fn clear_global_events() {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportMetadata {
     pub version: String,
-    pub timestamp: SystemTime,
+    pub timestamp: DateTime<Utc>,
     pub total_events: usize,
     pub level_counts: BTreeMap<String, usize>,
     pub description: Option<String>,
@@ -232,7 +232,7 @@ fn create_export_data(events: Vec<Event>, description: Option<String>) -> Export
 
     let metadata = ExportMetadata {
         version: env!("CARGO_PKG_VERSION").to_string(),
-        timestamp: SystemTime::now(),
+        timestamp: Utc::now(),
         total_events,
         level_counts,
         description,

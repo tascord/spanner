@@ -1,11 +1,10 @@
-use {
-    serde::{Deserialize, Serialize},
-    std::{
-        collections::HashMap,
-        time::{Duration, SystemTime},
-    },
-    tracing::Level,
+use std::{
+    collections::HashMap,
+    time::Duration,
 };
+use tracing::Level;
+use serde::{Serialize, Deserialize};
+use chrono::{DateTime, Utc};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct SerializableLevel(pub String);
@@ -48,8 +47,8 @@ pub struct SpanInfo {
     pub line: Option<u32>,
     pub module_path: Option<String>,
     pub fields: HashMap<String, String>,
-    pub entered_at: SystemTime,
-    pub exited_at: Option<SystemTime>,
+    pub entered_at: DateTime<Utc>,
+    pub exited_at: Option<DateTime<Utc>>,
     pub duration: Option<Duration>,
     pub children: Vec<SpanInfo>,
 }
@@ -65,7 +64,7 @@ impl SpanInfo {
             line: None,
             module_path: None,
             fields: HashMap::new(),
-            entered_at: SystemTime::now(),
+            entered_at: Utc::now(),
             exited_at: None,
             duration: None,
             children: Vec::new(),
@@ -79,9 +78,9 @@ impl SpanInfo {
     pub fn add_child(&mut self, child: SpanInfo) { self.children.push(child); }
 
     pub fn exit(&mut self) {
-        let now = SystemTime::now();
+        let now = Utc::now();
         self.exited_at = Some(now);
-        if let Ok(duration) = now.duration_since(self.entered_at) {
+        if let Ok(duration) = (now - self.entered_at).to_std() {
             self.duration = Some(duration);
         }
     }
@@ -89,6 +88,6 @@ impl SpanInfo {
     pub fn is_active(&self) -> bool { self.exited_at.is_none() }
 
     pub fn get_duration(&self) -> Option<Duration> {
-        self.duration.or_else(|| SystemTime::now().duration_since(self.entered_at).ok())
+        self.duration.or_else(|| (Utc::now() - self.entered_at).to_std().ok())
     }
 }

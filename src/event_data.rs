@@ -1,7 +1,8 @@
 use {
     crate::span::SerializableLevel,
+    chrono::{DateTime, Utc},
     serde::{Deserialize, Serialize},
-    std::{collections::HashMap, time::SystemTime},
+    std::collections::HashMap,
     tracing::Level,
 };
 
@@ -14,7 +15,7 @@ pub struct EventData {
     pub line: Option<u32>,
     pub module_path: Option<String>,
     pub fields: HashMap<String, String>,
-    pub timestamp: SystemTime,
+    pub timestamp: DateTime<Utc>,
 }
 impl EventData {
     pub fn new(message: String, level: Level, target: String) -> Self {
@@ -26,7 +27,7 @@ impl EventData {
             line: None,
             module_path: None,
             fields: HashMap::new(),
-            timestamp: SystemTime::now(),
+            timestamp: Utc::now(),
         }
     }
 
