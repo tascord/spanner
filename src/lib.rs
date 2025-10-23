@@ -121,4 +121,44 @@ mod tests {
             Err(e) => panic!("Failed to export to file: {}", e),
         }
     }
+
+    #[test]
+    fn test_subscriber_integration() {
+        // This test verifies that the layer integration works correctly
+        init_global_event_manager();
+        clear_global_events();
+
+        // Set up the exact pattern from the user's code
+        let sub = tracing_subscriber::fmt()
+            .without_time()
+            .with_line_number(true)
+            .with_target(true)
+            .with_file(true)
+            .finish();
+
+        let sub = add_to_subscriber(sub);
+        
+        // In the test we can't use set_global_default because it can only be called once
+        // So we'll use a different approach
+        use ::tracing::{info, warn, error, subscriber};
+        
+        subscriber::with_default(sub, || {
+            // Generate test events
+            info!("Test info message from subscriber");
+            warn!("Test warning from subscriber");
+            error!("Test error from subscriber");
+            
+            // Give a moment for processing
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        });
+
+        // Check what was captured
+        let summary = get_event_summary();
+        println!("Subscriber integration test - captured events summary:\n{}", summary);
+        
+        // Verify we captured some events
+        let count = get_global_event_count();
+        println!("Total events captured: {}", count);
+        assert!(count > 0, "Should have captured some events through the subscriber");
+    }
 }

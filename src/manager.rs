@@ -44,6 +44,12 @@ impl EventManager {
 
     pub fn is_empty(&self) -> bool { self.inner.is_empty() }
 
+    /// Emit an event (both store it and notify listeners)
+    pub fn emit(&mut self, event: Event) {
+        self.push(event.clone());
+        self.target.emit(event);
+    }
+
     /// Get events by level
     pub fn get_by_level(&self, level: Level) -> Vec<&Event> {
         self.inner.iter().filter(|event| event.event_data.level == level).collect()
@@ -109,7 +115,7 @@ pub fn get_global_event_count() -> usize {
 }
 
 pub(crate) fn emit(event: Event) -> Option<()> {
-    GLOBAL_EVENT_MANAGER.get()?.read().ok()?.emit(event);
+    GLOBAL_EVENT_MANAGER.get()?.write().ok()?.emit(event);
     Some(())
 }
 

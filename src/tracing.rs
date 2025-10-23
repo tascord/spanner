@@ -6,7 +6,7 @@ use {
     },
     std::collections::HashMap,
     tracing::Subscriber,
-    tracing_subscriber::{Layer, layer::Context, Registry, prelude::*},
+    tracing_subscriber::{Layer, Registry, layer::Context, prelude::*},
 };
 
 /// Initialize tracing with Spanner layer only (use with existing subscriber)
@@ -45,9 +45,7 @@ pub fn init_tracing_capture() -> Result<(), Box<dyn std::error::Error>> {
     init_global_event_manager();
 
     // Set up tracing subscriber with our custom layer
-    let subscriber = Registry::default()
-        .with(SpannerLayer)
-        .with(tracing_subscriber::fmt::layer());
+    let subscriber = Registry::default().with(SpannerLayer).with(tracing_subscriber::fmt::layer());
 
     tracing::subscriber::set_global_default(subscriber)?;
     tracing::info!("Spanner tracing capture initialized");
@@ -96,9 +94,16 @@ where
         event_data.module_path = metadata.module_path().map(String::from);
 
         // Create the event with thread context
+        #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
         let captured_event = Event::new(event_data)
             .with_thread_info(format!("{:?}", std::thread::current().id()), std::thread::current().name().map(String::from))
             .with_process_id(std::process::id())
+            .with_correlation_id(format!("corr-{}", generate_uuid_like_string()));
+
+        #[cfg(any(target_arch = "wasm32", target_arch = "wasm64"))]
+        let captured_event = Event::new(event_data)
+            .with_thread_info("main".to_string(), Some("main".to_string()))
+            .with_process_id(0)
             .with_correlation_id(format!("corr-{}", generate_uuid_like_string()));
 
         emit(captured_event);
