@@ -19,7 +19,7 @@ pub use {
         init_global_event_manager_with_count,
     },
     span::SpanInfo,
-    tracing::{SpannerLayer, init_tracing_capture},
+    tracing::{SpannerLayer, init_tracing_capture, init_layer_only, add_to_subscriber, init_with_subscriber},
 };
 
 /// Main initialization function - sets up the complete tracing system

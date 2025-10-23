@@ -6,24 +6,51 @@ use {
     },
     std::collections::HashMap,
     tracing::Subscriber,
-    tracing_subscriber::{Layer, layer::Context},
+    tracing_subscriber::{Layer, layer::Context, Registry, prelude::*},
 };
+
+/// Initialize tracing with Spanner layer only (use with existing subscriber)
+pub fn init_layer_only() -> Result<(), Box<dyn std::error::Error>> {
+    init_global_event_manager();
+    Ok(())
+}
+
+/// Add Spanner layer to an existing subscriber
+pub fn add_to_subscriber<S>(subscriber: S) -> impl Subscriber + Send + Sync
+where
+    S: Subscriber + Send + Sync + 'static,
+{
+    init_global_event_manager();
+    subscriber.with(SpannerLayer)
+}
+
+/// Initialize with custom subscriber
+pub fn init_with_subscriber<S>(subscriber: S) -> Result<(), Box<dyn std::error::Error>>
+where
+    S: Subscriber + Send + Sync + 'static,
+{
+    init_global_event_manager();
+    let subscriber_with_spanner = subscriber.with(SpannerLayer);
+    tracing::subscriber::set_global_default(subscriber_with_spanner)?;
+    tracing::info!("Spanner initialized with custom subscriber");
+    Ok(())
+}
 
 /// Initialize the complete tracing system with event capture
 /// This sets up both the global event manager and the tracing subscriber
 pub fn init_tracing_capture() -> Result<(), Box<dyn std::error::Error>> {
-    use tracing_subscriber::{Registry, prelude::*};
+    use tracing_subscriber::prelude::*;
 
     // Initialize global event manager
     init_global_event_manager();
 
     // Set up tracing subscriber with our custom layer
-    let subscriber = Registry::default().with(SpannerLayer).with(tracing_subscriber::fmt::layer()); // Also include formatted output
+    let subscriber = Registry::default()
+        .with(SpannerLayer)
+        .with(tracing_subscriber::fmt::layer());
 
     tracing::subscriber::set_global_default(subscriber)?;
-
     tracing::info!("Spanner tracing capture initialized");
-
     Ok(())
 }
 
